@@ -1,3 +1,9 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+body {
+    @apply bg-gray-500;
+    background-image: var(--wiggles-bg);
+    overscroll-behavior-y: none;
+}
