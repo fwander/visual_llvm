@@ -9,6 +9,9 @@ export class Type {
     toString: () => string =  () => {
         return this.val;
     }
+    eval: () => string = () =>{
+        return ``;
+    }
 }
 
 // enum TypeType {

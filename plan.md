@@ -43,6 +43,10 @@ CONST = '"'ID'"' | [0-9]+
 * behaviors
 
 ## week 2
+
+Global variables is very important
+Calling External Functions
+
 * some of code generation done
   * functions
   * arithmetic and boolean expressions
