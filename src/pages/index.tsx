@@ -290,7 +290,7 @@ const SelectExpressionType: React.FC<Props> = (context) => {
 const SelectLogic: React.FC<Props> = (context) => {
   let passing = context.copy();
   passing.del = undefined;
-  passing.current = (BOOL);
+  passing.current = BOOL;
   let si = new SelectInput([
     Operator.AND,
     Operator.OR,
@@ -307,7 +307,7 @@ const SelectLogic: React.FC<Props> = (context) => {
 const SelectArith: React.FC<Props> = (context) => {
   let passing = context.copy();
   passing.del = undefined;
-  passing.current = (INT);
+  passing.current = INT;
   let ops = [
     Operator.PLUS,
     Operator.MINUS,
@@ -385,29 +385,6 @@ const SelectLine: React.FC<Props> = (props) => {
   return <Select {...si}/>
 }
 
-const SelectLValueType: React.FC<Props> = (context) => {
-  const [resetting,setReset] = useState(false);
-  function reset(){
-    setReset(true);
-  }
-  function done(){
-    setReset(false);
-  }
-  let context_reset = context.copy();
-  context_reset.del = reset;
-  let si = new SelectInput([
-    "new variable",
-    "existing variable",
-  ],[
-    <NewVar {...context}/>,
-    <SelectVars {...context_reset}/>
-
-  ], "Select L-Value",
-  [() => {remove(context.context,context.lineNumer)}],undefined,done,resetting
-  );
-  return <Select {...si}/>
-}
-
 //        //
 // Render //
 //        //
@@ -416,12 +393,12 @@ function BinaryOp(props: any){
   if (!props.props.current){
     return <div>Error no Type</div>
   }
-  let expr = new BinaryExpr(props.lineNumer,props.current,props.op);
+  const [expr, setExpr] = useState(new BinaryExpr(props.props.lineNumer,props.props.current,props.op));
   let lprops = props.props.copy();
   let rprops = props.props.copy();
-  lprops.rvalsetter = expr.setLeft;
+  lprops.rvalSetter = (e: Expression)=>{expr.setLeft(e);setExpr(expr)};
   lprops.del = undefined;
-  rprops.rvalsetter = expr.setRight;
+  rprops.rvalSetter = (e: Expression)=>{expr.setRight(e);setExpr(expr)};
   rprops.del = undefined;
   return <ExprComponent props={props.props} rval={expr} row={true}> 
     <div>(</div>
@@ -436,10 +413,10 @@ function UnaryOp(props: any){
   if (!props.props.current){
     return <div>Error no Type</div>
   }
-  let expr = new UnaryExpr(props.lineNumer,props.current,props.op);
+  const [expr, setExpr] = useState(new UnaryExpr(props.props.lineNumer,props.props.current,props.op));
   let cprops = props.props.copy();
   cprops.del = undefined;
-  cprops.rvalSetter = expr.setChild;
+  cprops.rvalSetter = (e: Expression) => {expr.setChild(e);setExpr(expr)};
   return <ExprComponent props={props.props} rval={expr} row={true}>
     <div>{props.op}</div>
     <div>(</div>
@@ -448,10 +425,10 @@ function UnaryOp(props: any){
     </ExprComponent>
 }
 const Return: React.FC<Props> = (props) => {
-  let expr = new ReturnExpr(props.lineNumer);
+  const [expr, setExpr] = useState(new ReturnExpr(props.lineNumer));
   let cprops = props.copy();
   cprops.del = undefined;
-  cprops.rvalSetter = expr.setChild;
+  cprops.rvalSetter = (e: Expression) => {expr.setChild(e);setExpr(expr)};
   return <ExprComponent props={props} rval={expr} row={true}>
     <div>return</div>
     <div>(</div>
@@ -463,6 +440,7 @@ const Return: React.FC<Props> = (props) => {
 const Assign: React.FC<Props> = (props) => {
   const [name, setName] = useState('');
   const [T, setType] = useState(new AssignExpr(props.lineNumer,'',new Expression(props.lineNumer)));
+  props.context.set(name,T)
   let newProps = new Props(props.context,props.lineNumer,updateName,updateType,undefined,undefined,(t: Expression) => {return !(t instanceof FunctionExpr)});
   let exprProps = new Props(props.context,props.lineNumer,undefined,updateType,undefined,undefined,(t: Expression) => {return !(t instanceof FunctionExpr)});
   if (name !== '')
@@ -497,16 +475,17 @@ const Set: React.FC<Props> = (props) => {
   if (!(assign instanceof Expression)) {
     assign = new AssignExpr(props.lineNumer,'',new Expression(props.lineNumer));
   }
-  let T = new SetExpr(props.lineNumer,assign as AssignExpr | ParamExpr,new Expression(props.lineNumer));
+  const [T,setT] = useState(new SetExpr(props.lineNumer,assign as AssignExpr | ParamExpr,new Expression(props.lineNumer)));
   function updateName(newName: string){
     let a = props.context.get(newName);
-    console.log(a);
-    if (a instanceof ExprComponent)
+    if (a instanceof Expression)
       T.assignExpr = a as AssignExpr | ParamExpr;
       setName(newName);
+      setT(T);
   }
   function updateExpr(newExpr: Expression){
     T.setExpr(newExpr);
+    setT(T);
   }
   let type = T.assignExpr.getType() as Type;
   
@@ -587,6 +566,7 @@ const Const: React.FC<Props> = (props) => {
     if (!setter){
       return;
     }
+    console.log(val);
     if (val.charAt(0) == '"' && val.charAt(val.length-1) == '"' && props.typeFilter(new Expression(props.lineNumer,STRING))){
       setter(new ConstExpr(props.lineNumer,STRING,val.slice(1,-1)))
       setOk(true)
@@ -730,7 +710,7 @@ const While: React.FC<Props> = (props) => {
 const FunctionDef: React.FC<Props> = (props) => {
   const [name, setName] = useState('function_name');
   const [numArgs, setNumArgs] = useState(0);
-  let returnType = new FunctionExpr(name, new Type(""));
+  const [returnType, setType] = useState(new FunctionExpr(name, new Type("")));
   let context = new Context(returnType, props.context);
   let initProps = new Props(context,0,updateName);
   initProps.typeSetter = updateType;
@@ -745,6 +725,7 @@ const FunctionDef: React.FC<Props> = (props) => {
     if(props.rvalSetter){
       props.rvalSetter(returnType);
     }
+    setType(returnType);
   }
 
   function updateNthArgType(n: number){
@@ -762,6 +743,7 @@ const FunctionDef: React.FC<Props> = (props) => {
       if(props.rvalSetter){
         props.rvalSetter(returnType);
       }
+    setType(returnType);
     }
   }
 
@@ -771,6 +753,7 @@ const FunctionDef: React.FC<Props> = (props) => {
       t.args.push(new Type(""));
     }
     setNumArgs(numArgs+1);
+    setType(returnType);
   }
 
   function removeArg(){
@@ -780,6 +763,7 @@ const FunctionDef: React.FC<Props> = (props) => {
       t.args.pop();
     }
     setNumArgs(numArgs-1);
+    setType(returnType);
   }
 
   let numArr = [];
