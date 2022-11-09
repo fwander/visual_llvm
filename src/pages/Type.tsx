@@ -10,7 +10,7 @@ export class Type {
         return this.val;
     }
     eval: () => string = () =>{
-        return ``;
+        return this.val;
     }
 }
 
