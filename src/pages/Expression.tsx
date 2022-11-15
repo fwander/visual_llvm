@@ -154,7 +154,7 @@ export class ParamExpr extends Expression{
     eval = () => {
         return `` ;
     }
-    getType = () => {return this.type}
+    getType = () => {return this.t as Type}
 }
 
 export class ReturnExpr extends Expression {
@@ -211,7 +211,7 @@ ${this.codeBlock?.insert()}
 ${this.codeBlock?.eval()}
         ` ;
     }
-    getType = () => {return VOID}
+    getType = () => {return this.retType}
 }
 
 export class BlockExpr extends Expression {
@@ -336,4 +336,10 @@ console.log(module.print());
         `
     }
     getType = () => {return VOID}
+}
+
+
+
+export class FunctionCallExpr extends Expression {
+
 }
