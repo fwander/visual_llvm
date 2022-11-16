@@ -11,9 +11,10 @@ import { Prism } from '@mantine/prism';
 var input_field = "bg-gray-50 h-2 border border-gray-300 text-gray-900 text-sm rounded focus:ring-blue-500 focus:border-blue-500 p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500";
 var button = "inline-flex items-center select-none px-1.5 py-0 bg-gray-50 mx-1 text-gray-500 rounded-md hover:bg-gray-200 hover:text-gray-600";
 var red_button = button + " bg-red-400 text-gray-50 hover:bg-red-500 hover:text-gray-100";
-var component_row = "flex flex-row space-x-1 bg-gray-500 bg-opacity-40 rounded-md p-2";
-var component_col = "flex flex-col space-y-1 bg-gray-500 bg-opacity-40 rounded-md p-1";
+var component_row = "flex flex-row space-x-1 bg-gray-900 bg-opacity-10 rounded-md p-2 align-middle justify-center my-auto";
+var component_col = "flex flex-col space-y-1 bg-gray-900 bg-opacity-10 rounded-md p-1";
 var keyword = "font-bold bg-opacity-100 rounded-md px-1 py-0"
+var symbol = "m-auto"
 
 export default function Home() {
   let context = new Context(new FunctionExpr("global",new Type("")));
@@ -158,6 +159,7 @@ class Props {
   current?: Type;
   currentExpr?: Expression;
   del?: ()=>void;
+  color: String = "";
   constructor(context: Context, lineNumber: number, lvalSetter?: (n: string)=>void, rvalSetter?: (n: Expression)=>void, current?: Type, content?: string, typeFilter?: (t: Expression) => boolean, typeSetter?:(n:Type)=>void, del?: ()=>void) {
     this.lineNumer = lineNumber;
     this.context = context;
@@ -176,6 +178,7 @@ class Props {
   copy = () => {
     let ret = new Props(this.context,this.lineNumer,this.lvalSetter,this.rvalSetter,this.current,this.content,this.typeFilter,this.typeSetter,this.del);
     ret.currentExpr = this.currentExpr;
+    ret.color = this.color;
     return ret;
   }
 }
@@ -184,14 +187,15 @@ function ExprComponent(props: any){
   const [selected, setSelected] = useState(false);
   let highlighted = "bg-yellow-400 bg-opacity-70";
   function handleClick(e: React.MouseEvent<HTMLElement>){
+    e.stopPropagation();
     if (e.ctrlKey)
       setSelected(true)
   }
   function addDocumentHandler(e: any){
     function documentClick(e_inner: MouseEvent){
       console.log("here")
-      document.body.removeEventListener('mousedown', documentClick,true)
       if(!e_inner.shiftKey){
+        document.body.removeEventListener('mousedown', documentClick,true)
         setSelected(false);
       }
     }
@@ -249,7 +253,7 @@ const CodeBlock: React.FC<Props> = (props) => {
     numArr.push(i);
     expr.lines.push(new Expression(0));
   }
-  return <ExprComponent props={props} rval={expr} row={false}> 
+  return <ExprComponent props={props} rval={expr} row={false} color={props.color}> 
     {numArr.map((i: number) => <SelectLine {...new Props(context,i,undefined,(e)=>{setLine(i,e)},undefined,props.content.concat(i.toString()))} />)}
     {
       hasret?
@@ -312,7 +316,7 @@ const Select: React.FC<SelectInput> = (props) => {
     return <div className="flex flex-row space-x-1 items-center justify-left">{props.outputs[childIndex]} {props.outputs[childIndex]?.props.del? null : <a onClick={()=>{deleteCurrent()}} className={red_button}>X</a>}</div>
   }
   else{
-  return <select className="h-6 bg-gray-50 rounded-sm text-green-700" value={-1} onChange={(e) => handleChange(e.target.value)}>
+  return <select className="h-6 bg-gray-50 rounded-sm text-green-700 my-auto" value={-1} onChange={(e) => handleChange(e.target.value)}>
       {props.names.map((name: string) => 
         <option key={i++} value={name}>{name}</option>
       )}
@@ -474,11 +478,11 @@ function BinaryOp(props: any){
   rprops.rvalSetter = (e: Expression)=>{expr.setRight(e);setExpr(expr)};
   rprops.del = undefined;
   return <ExprComponent props={props.props} rval={expr} row={true}> 
-    <div>(</div>
+    <div className={symbol}>(</div>
     <SelectExpressionType {...lprops}/>
-    <div>{props.op}</div>
+    <div className={symbol}>{props.op}</div>
     <SelectExpressionType {...rprops}/>
-    <div>)</div>
+    <div className={symbol}>)</div>
     </ExprComponent>
 }
 
@@ -491,10 +495,10 @@ function UnaryOp(props: any){
   cprops.del = undefined;
   cprops.rvalSetter = (e: Expression) => {expr.setChild(e);setExpr(expr)};
   return <ExprComponent props={props.props} rval={expr} row={true}>
-    <div>{props.op}</div>
-    <div>(</div>
+    <div className={symbol}>{props.op}</div>
+    <div className={symbol}>(</div>
     <SelectExpressionType {...cprops}/>
-    <div>)</div>
+    <div className={symbol}>)</div>
     </ExprComponent>
 }
 const Return: React.FC<Props> = (props) => {
@@ -502,11 +506,11 @@ const Return: React.FC<Props> = (props) => {
   let cprops = props.copy();
   cprops.del = undefined;
   cprops.rvalSetter = (e: Expression) => {expr.setChild(e);setExpr(expr)};
-  return <ExprComponent props={props} rval={expr} row={true}>
-    <div>return</div>
-    <div>(</div>
+  return <ExprComponent props={props} rval={expr} row={true} color="bg-amber-500">
+    <KeyWord color="bg-amber-700 text-white">return</KeyWord>
+    <div className={symbol}>(</div>
     <SelectExpressionType {...cprops}/>
-    <div>)</div>
+    <div className={symbol}>)</div>
     </ExprComponent>
 }
 
@@ -535,7 +539,7 @@ const Assign: React.FC<Props> = (props) => {
   
   return <ExprComponent props={props} rval={T} row={true}>
     <NewVar     {...newProps}/>
-    <div>
+    <div className={symbol}>
       := 
     </div>
     <SelectExpressionType {...exprProps}/>
@@ -559,9 +563,9 @@ const FunctionCall: React.FC<Props> = (props) => {
     <KeyWord>
     {fn.name}
     </KeyWord>
-    <div> ( </div>
+    <div className={symbol}> ( </div>
     {fn.params.map((p)=>{return <SelectExpressionType {...getProps(p.t? p.t : new Type(""))}/>})}
-    <div> ) </div>
+    <div className={symbol}> ) </div>
   </ExprComponent>
 }
 
@@ -592,7 +596,7 @@ const Set: React.FC<Props> = (props) => {
 
   return <ExprComponent props={props} rval={T} row={true}>
     <SelectVars    {...varProps}/>
-    <div>
+    <div className={symbol}>
       =
     </div>
     <SelectExpressionType {...newProps}/>
@@ -627,7 +631,7 @@ const Param: React.FC<Props> = (props) => {
   newProps.typeSetter = updateType;
   return <ExprComponent props={props} rval={T} row={true}>
     <NewVar {...newProps}/>
-    <div>
+    <div className={symbol}>
       : 
     </div>
     <SelectType {...newProps}/>
@@ -731,8 +735,10 @@ const IfElse: React.FC<Props> = (props) => {
   let elseprops = new Props(elsecontext,0);
   ifprops.rvalSetter = expr.setIf;
   ifprops.content = props.content.concat("_if_block");
+  ifprops.color = "bg-indigo-500";
   elseprops.rvalSetter = expr.setElse;
   elseprops.content = props.content.concat("_else_block");
+  elseprops.color = "bg-rose-500";
 
   let condprops = props.copy();
   condprops.rvalSetter = expr.setCond;
@@ -767,6 +773,7 @@ const If: React.FC<Props> = (props) => {
   let ifprops = new Props(ifcontext,0);
   ifprops.rvalSetter = expr.setIf;
   ifprops.content = props.content.concat("_if_block");
+  ifprops.color = "bg-indigo-500";
 
   let condprops = props.copy();
   condprops.rvalSetter = expr.setCond;
