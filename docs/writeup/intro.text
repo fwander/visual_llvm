@@ -1,0 +1,22 @@
+
+\documentclass{article}
+\usepackage[utf8]{inputenc}
+\usepackage[a4paper, total={6in, 8in}]{geometry}
+
+\title{Intro}
+\author{Finn Wander}
+\date{September 2022}
+
+\begin{document}
+
+\maketitle
+
+\section{Introduction}
+
+LLVM is an open source project that allows users to translate any language to its intermediate representation (IR) and to translate IR to any user-defined instruction set. Although future MQPs may focus on the back-end of llvm, this MQP will only be focusing on simplifying the front-end translation process for beginners. 
+
+Although it is more than capable of being used for a production environment, LLVM can be incredibly useful for learning environments. It provides a way for students learning about compilers to produce machine code with a compiler without having to worry about implementation details of a specific architecture. If students are taking a class on compilers, keeping all students on the same page is extremely difficult if all students are building compilers to their own machine's target infrastructure. This problem is typically solved having students target a virtual machine. If students can easily target LLVM IR they can build compilers to almost any architecture.
+
+There is good documentation for the C++ LLVM IR builder (a library that can be used to generate LLVM IR), but it isn't very beginner friendly. It provides definitions for all LLVM IR builder components but doesn't provide examples of how they should be composed together. 
+
+\end{document}
