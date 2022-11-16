@@ -1,0 +1,41 @@
+\documentclass{article}
+\usepackage{syntax}
+
+\begin{document}
+\setlength{\grammarparsep}{20pt plus 1pt minus 1pt}
+\setlength{\grammarindent}{12em}
+
+\begin{grammar}
+<program> ::= <empty>
+\alt <function> <program>
+\alt <struct> <program>
+
+<function> ::= <ident> `(' <params> `)' <code block>
+
+<code block> ::= <empty>
+\alt <expression> <code block>
+
+<expression> ::= <expression> BINARY <expression>
+\alt UNARY <expression>
+\alt <ident> `:=' <expression>
+\alt <ident> `=' <expression>
+\alt `if' <expression> `then' <code block>
+\alt `if' <expression> `then' <code block> `else' <code block>
+\alt `while' <expression> `do' <code block>
+\alt <ident> `(' <arguments> `)'
+\alt `return' <expression>
+\alt ID
+\alt CONST
+
+<arguments> ::= <expression>
+\alt <arguments> `,' <expression>
+
+<ID> ::= [.]+
+
+<CONST> ::= true
+\alt false
+\alt [0-9]+
+\alt `"' ID `"'
+\end{grammar}
+
+\end{document}
