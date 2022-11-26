@@ -5,8 +5,11 @@ import internal from "stream";
 import { map, number, ZodFunctionDef } from "zod";
 import { AssignExpr, BinaryExpr, BlockExpr, ConstExpr, DeRefExpr, Expression, FunctionCallExpr, FunctionExpr, GlobalExpr, IfElseExpr, IfExpr, ParamExpr, ReturnExpr, SetExpr, UnaryExpr, WhileExpr } from "./Expression";
 import { BOOL, INT, POINTER, STRING, Type, VOID } from "./Type"
-import { remove } from "./util";
+import { remove, useQueryState } from "./util";
 import { Prism } from '@mantine/prism';
+import { Router, useSearchParams } from "react-router-dom";
+import { useRouter } from "next/router";
+import { ParsedUrlQuery } from "querystring";
 
 var input_field = "bg-gray-50 h-2 border border-gray-300 text-gray-900 text-sm rounded focus:ring-blue-500 focus:border-blue-500 p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500 my-auto";
 var button = "inline-flex items-center select-none px-1.5 py-0 bg-gray-50 mx-1 text-gray-500 rounded-md hover:bg-gray-200 hover:text-gray-600";
@@ -16,27 +19,37 @@ var component_col = "flex flex-col space-y-1 bg-gray-900 bg-opacity-10 rounded-m
 var keyword = "font-bold bg-opacity-100 rounded-md px-1 py-0"
 var symbol = "m-auto"
 
+
 export default function Home() {
   let context = new Context(new FunctionExpr("global",new Type("")));
-  let initProps = new Props(context,0);
   let expr = new GlobalExpr(0);
-  const [numLines, setNumLines] = useState(1);
+  const [numLines, setNumLines] = useQueryState('numfns',1,(p: string)=>{return parseInt(p)});
   const [output, setOutput] = useState(expr.eval());
 
-  // console.log(props.context);
+  const router = useRouter();
+  console.log(Object.keys(router.query).length);
+
+  // console.log(JSON.stringify({lines:4}));
+
   let numArr = [];
   for (let i = 0; i < numLines; i++){
     numArr.push(i);
     expr.functions.push(new FunctionExpr("",new Type("")));
   }
+  function nthProp(n: number){
+    let ret = new Props(context,n,undefined,(e)=>{expr.functions[n] = e as FunctionExpr});
+    ret.id = JSON.stringify(n);
+    return ret;
+  }
   return <div className="h-screen w-screen flex flex-row">
   <div className="h-screen bg-gray-50 flex flex-col">
-    {numArr.map((i: number) => <FunctionDef {...new Props(context,i,undefined,(e)=>{expr.functions[i] = e as FunctionExpr})} />)}
+    {numArr.map((i: number) => <FunctionDef {...nthProp(i)} />)}
     <div className="flex flex-row">
       <a className={button} onClick={() => setNumLines(numLines+1)}>add</a>
       <a className={button} onClick={() => setNumLines(Math.max(numLines-1, 0))}>remove</a>
     </div>
-    </div>
+    <button className={button} onClick={(e)=>{}}>save</button>
+  </div>
     <div className="bg-gray-100">
       <button className={button} onClick={(e)=>{setOutput(expr.eval())}}>compile</button>
       <Prism language="javascript">
@@ -69,7 +82,7 @@ export enum Operator {
   AND   = "and",
   OR    = "or",
   NOT   = "!",
-  EQ    = "=",
+  EQ    = "==",
   LT    = "<",
   GT    = ">",
   LE    = ">=",
@@ -85,13 +98,13 @@ export class Context {
   names: string[] = []
   exprs: Expression[] = [] 
   parentContext?: Context;
-  children: Context[] = [];
+  // children: Context[] = [];
   block: BlockExpr;
   functionIn: FunctionExpr;
 
   constructor(functionIn: FunctionExpr, parent?: Context, block?: BlockExpr){
     this.parentContext = parent;
-    this.parentContext?.children.push(this);
+    // this.parentContext?.children.push(this);
     this.block = block? block : (parent? parent.block : new BlockExpr("",new FunctionExpr("",new Type(""))));
     this.functionIn = functionIn;
   }
@@ -160,6 +173,8 @@ class Props {
   currentExpr?: Expression;
   del?: ()=>void;
   color: String = "";
+  id: string = "0";
+
   constructor(context: Context, lineNumber: number, lvalSetter?: (n: string)=>void, rvalSetter?: (n: Expression)=>void, current?: Type, content?: string, typeFilter?: (t: Expression) => boolean, typeSetter?:(n:Type)=>void, del?: ()=>void) {
     this.lineNumer = lineNumber;
     this.context = context;
@@ -179,6 +194,7 @@ class Props {
     let ret = new Props(this.context,this.lineNumer,this.lvalSetter,this.rvalSetter,this.current,this.content,this.typeFilter,this.typeSetter,this.del);
     ret.currentExpr = this.currentExpr;
     ret.color = this.color;
+    ret.id = this.id;
     return ret;
   }
 }
@@ -193,7 +209,6 @@ function ExprComponent(props: any){
   }
   function addDocumentHandler(e: any){
     function documentClick(e_inner: MouseEvent){
-      console.log("here")
       if(!e_inner.shiftKey){
         document.body.removeEventListener('mousedown', documentClick,true)
         setSelected(false);
@@ -203,8 +218,6 @@ function ExprComponent(props: any){
   }
   if (props.props.rvalSetter){
     props.props.rvalSetter(props.rval);
-    console.log("rval");
-    console.log(props.rval);
   }
   return <div onMouseDown={handleClick} onMouseUp={addDocumentHandler} className={(props.row? component_row : component_col) + " " + (props.color? props.color : "") + " " + (selected? highlighted : "")}>
     {props.children}
@@ -222,7 +235,7 @@ function KeyWord(props: any){
 }
 
 const CodeBlock: React.FC<Props> = (props) => {
-  const [numLines, setNumLines] = useState(1);
+  const [numLines, setNumLines] = useQueryState('numlines'+props.id,1,(p: string)=>{return parseInt(p)});
   const [expr,setExpr] = useState(new BlockExpr(props.content,props.context.functionIn));
   const [hasret, setHasret] = useState(false);
   let context = new Context(props.context.functionIn, props.context);
@@ -230,13 +243,11 @@ const CodeBlock: React.FC<Props> = (props) => {
 
   function setLine(n: number, e: Expression){
     expr.lines[n] = e;
-    console.log("setting line");
     setExpr(expr);
     checkRet();
   }
 
   function checkRet(){
-    console.log("checking ret")
     for (let e of expr.lines){
       if (e instanceof ReturnExpr){
         setHasret(true);
@@ -246,15 +257,20 @@ const CodeBlock: React.FC<Props> = (props) => {
     setHasret(false);
   }
 
+  function nthProp(n: number){
+    let ret = new Props(context,n,undefined,(e)=>{setLine(n,e)},undefined,props.content.concat(n.toString()));
+    ret.id = props.id + ":" +JSON.stringify(n);
+    return ret;
+  }
 
-  // console.log(props.context);
+
   let numArr = [];
   for (let i = 0; i < numLines; i++){
     numArr.push(i);
     expr.lines.push(new Expression(0));
   }
   return <ExprComponent props={props} rval={expr} row={false} color={props.color}> 
-    {numArr.map((i: number) => <SelectLine {...new Props(context,i,undefined,(e)=>{setLine(i,e)},undefined,props.content.concat(i.toString()))} />)}
+    {numArr.map((i: number) => <SelectLine {...nthProp(i)} />)}
     {
       hasret?
       null
@@ -274,6 +290,7 @@ class SelectInput {
   goBack?: () => void;
   done?: () => void;
   reset?: boolean;
+  id: string = "";
   constructor(names: string[], outputs: JSX.Element[], def?: string, del?: (() => void)[], goBack?: () => void,done?: ()=>void, reset?: boolean){
     if (!def){
       def = "select input"
@@ -290,7 +307,7 @@ class SelectInput {
 }
 
 const Select: React.FC<SelectInput> = (props) => {
-  const [childIndex, setChild] = useState(-1);
+  const [childIndex, setChild] = useQueryState(props.names[0]+props.id,-1,(p: string)=>{return parseInt(p)});
   function handleChange(name: string) {
     if (name === ".." && props.goBack){
       props.goBack();
@@ -299,7 +316,6 @@ const Select: React.FC<SelectInput> = (props) => {
     setChild(props.names.findIndex(x => x == name) - 1);
   }
   function deleteCurrent(){
-      console.log("DELETE" + childIndex);
     if (childIndex != -1 && props.d[childIndex] !== undefined){
       (props.d[childIndex] as () => void)();
     }
@@ -312,7 +328,6 @@ const Select: React.FC<SelectInput> = (props) => {
   }
   let i = 0;
   if (childIndex > -1) {
-    console.log(props.outputs[childIndex]?.props);
     return <div className="flex flex-row space-x-1 items-center justify-left">{props.outputs[childIndex]} {props.outputs[childIndex]?.props.del? null : <a onClick={()=>{deleteCurrent()}} className={red_button}>X</a>}</div>
   }
   else{
@@ -357,6 +372,8 @@ const SelectLogic: React.FC<Props> = (context) => {
   let passing_cmp = context.copy();
   passing_cmp.del = undefined;
   passing_cmp.current = INT;
+  let passing_eq = passing_cmp.copy();
+  passing_eq.typeFilter = (e: Expression)=>{return true;};
   let si = new SelectInput([
     Operator.AND,
     Operator.OR,
@@ -369,7 +386,7 @@ const SelectLogic: React.FC<Props> = (context) => {
   ],[
     <BinaryOp op={Operator.AND} props={passing}/>,
     <BinaryOp op={Operator.OR}  props={passing}/>,
-    <BinaryOp op={Operator.EQ}  props={passing_cmp}/>,
+    <BinaryOp op={Operator.EQ}  props={passing_eq}/>,
     <BinaryOp op={Operator.LT}  props={passing_cmp}/>,
     <BinaryOp op={Operator.GT}  props={passing_cmp}/>,
     <BinaryOp op={Operator.LE}  props={passing_cmp}/>,
@@ -405,11 +422,8 @@ const SelectVars: React.FC<Props> = (props) => {
   let line = props.lineNumer;
   while(currentContext !== undefined){
     let i = 0;
-    console.log(currentContext);
     for (var name of currentContext.names){
-      if (line >= 0 && i >= line){
-        break;
-      }
+      if (line >= 0 && i >= line) break;
       if (props.current && currentContext.exprs[i]?.getType() as Type != props.current){
         i++;
         continue;
@@ -459,6 +473,7 @@ const SelectLine: React.FC<Props> = (props) => {
   ], "Select New Line",
   [() => {remove(props.context,props.lineNumer); if (props.rvalSetter) props.rvalSetter(new Expression(props.lineNumer));}]
   );
+  si.id = props.id;
   return <Select {...si}/>
 }
 
@@ -524,7 +539,6 @@ const Assign: React.FC<Props> = (props) => {
     props.context.set(name,T);
   function updateName(newName: string){
     props.context.update_name(name,newName,props.lineNumer,T);
-    // console.log(props.context);
     T.setid(newName);
     setType(T);
     setName(newName);
@@ -553,7 +567,6 @@ const FunctionCall: React.FC<Props> = (props) => {
   let fn  = props.currentExpr as FunctionExpr;
   const [expr, setExpr] = useState(new FunctionCallExpr(props.lineNumer));
   function getProps(type: Type){
-    console.log(type);
     let ret = props.copy()
     ret.del = undefined;
     ret.typeFilter = (e: Expression) => {return e.getType() == type}
@@ -611,7 +624,6 @@ const Param: React.FC<Props> = (props) => {
     props.context.set(name,T);
   function updateName(newName: string){
     props.context.update_name(name,newName,props.lineNumer,T)
-    console.log(props.context);
     T.ident = newName;
     if (props.rvalSetter){
       props.rvalSetter(T);
@@ -646,6 +658,7 @@ const NewVar: React.FC<Props> = (props) => {
   return <input
         className={input_field + " w-32"}
         onChange={(e) => {setter(e.target.value)}}
+        defaultValue={props.content}
       />
 }
 
@@ -666,7 +679,6 @@ const Const: React.FC<Props> = (props) => {
     if (!setter){
       return;
     }
-    console.log(val);
     if (val.charAt(0) == '"' && val.charAt(val.length-1) == '"' && props.typeFilter(new Expression(props.lineNumer,STRING))){
       setter(new ConstExpr(props.lineNumer,STRING,val.slice(1,-1)))
       setOk(true)
@@ -699,18 +711,13 @@ const Const: React.FC<Props> = (props) => {
 
 
 const VarSet: React.FC<Props> = (props) => {
-  console.log("HERE IT IS")
-  console.log(props.currentExpr)
   if (props.currentExpr && (props.currentExpr instanceof FunctionExpr)){
-    console.log("FUNCTION CALL")
     return <FunctionCall {...props}/>;
   }
   if (props.lvalSetter){
-    console.log("LVAL");
     props.lvalSetter(props.content);
   }
   if (props.rvalSetter){
-    console.log("DEREF");
     props.rvalSetter(new DeRefExpr(props.lineNumer,props.context.get(props.content) as ParamExpr | AssignExpr));
   }
   return <div>{props.content}</div>;
@@ -736,12 +743,16 @@ const IfElse: React.FC<Props> = (props) => {
   ifprops.rvalSetter = expr.setIf;
   ifprops.content = props.content.concat("_if_block");
   ifprops.color = "bg-indigo-500";
+  ifprops.id = props.id + ":" + "0";
   elseprops.rvalSetter = expr.setElse;
   elseprops.content = props.content.concat("_else_block");
   elseprops.color = "bg-rose-500";
+  elseprops.id = props.id + ":" + "1";
 
   let condprops = props.copy();
+  condprops.typeFilter = (e: Expression) => {return e.getType() == BOOL};
   condprops.rvalSetter = expr.setCond;
+  condprops.id = props.id + ":" + "3"
   return <ExprComponent props={props} rval={expr} row={false}>
     <div className="flex flex-row space-x-4">
       <KeyWord>
@@ -774,9 +785,12 @@ const If: React.FC<Props> = (props) => {
   ifprops.rvalSetter = expr.setIf;
   ifprops.content = props.content.concat("_if_block");
   ifprops.color = "bg-indigo-500";
+  ifprops.id = props.id + ":" + "0";
 
   let condprops = props.copy();
+  condprops.typeFilter = (e: Expression) => {return e.getType() === BOOL};
   condprops.rvalSetter = expr.setCond;
+  condprops.id = props.id + ":" + "3"
   return <ExprComponent props={props} rval={expr} row={false}>
     <div className="flex flex-row space-x-4">
       <KeyWord>
@@ -801,9 +815,12 @@ const While: React.FC<Props> = (props) => {
   let ifprops = new Props(ifcontext,0);
   ifprops.rvalSetter = expr.setIf;
   ifprops.content = props.content.concat("_while_block");
+  ifprops.id = props.id + ":" + "0";
 
   let condprops = props.copy();
+  condprops.typeFilter = (e: Expression) => {return e.getType() == BOOL};
   condprops.rvalSetter = expr.setCond;
+  condprops.id = props.id + ":" + "3"
   return <ExprComponent props={props} rval={expr} row={false}>
     <div className="flex flex-row space-x-4">
       <KeyWord>
@@ -824,13 +841,22 @@ const While: React.FC<Props> = (props) => {
 }
 
 const FunctionDef: React.FC<Props> = (props) => {
-  const [name, setName] = useState('function_name');
+  const [name, setName] = useQueryState('fnname'+props.id,'function_name',(s:string)=>{return s.slice(1,-1);});
   const [numArgs, setNumArgs] = useState(0);
   const [returnType, setType] = useState(new FunctionExpr(name, new Type("")));
   let context = new Context(returnType, props.context);
+
+  let nameProps = new Props(context,0,updateName);
+  nameProps.content=name;
+
   let initProps = new Props(context,0,updateName);
   initProps.typeSetter = updateType;
 
+  returnType.name = name;
+
+  if (name!='function_name'){
+    props.context.update_name(name,name,props.lineNumer,returnType);
+  }
   function updateName(newName: string){
     props.context.update_name(name,newName,props.lineNumer,returnType);
     returnType.name = newName;
@@ -848,15 +874,12 @@ const FunctionDef: React.FC<Props> = (props) => {
 
   function updateNthArgType(n: number){
     return (newType: Expression) => {
-      console.log(n)
-      console.log(newType)
       let t: Type = returnType.getType() as Type
       if (t.args){
         t.args[n] = newType.getType() as Type;
       }
       returnType.params[n] = newType as ParamExpr;
       props.context.set(name,returnType);
-      console.log(returnType);
       context.set(returnType.params[n]?.ident as string,newType);
       if(props.rvalSetter){
         props.rvalSetter(returnType);
@@ -889,14 +912,20 @@ const FunctionDef: React.FC<Props> = (props) => {
     numArr.push(i);
   }
   
-  console.log(context.names);
 
   let codeBlockProps = new Props(context, 0);
   codeBlockProps.rvalSetter = returnType.setChild;
   codeBlockProps.content = name;
+  codeBlockProps.id = props.id;
 
   if(props.rvalSetter){
     props.rvalSetter(returnType);
+  }
+
+  function nthProp(n: number){
+    let ret = new Props(context,n,undefined,updateNthArgType(n));
+    ret.id = props.id + ":" +JSON.stringify(n);
+    return ret;
   }
 
   return <div className="border-2 flex flex-col space-y-1 font-mono bg-gray-50">
@@ -904,9 +933,9 @@ const FunctionDef: React.FC<Props> = (props) => {
       <KeyWord>
       function
       </KeyWord>
-      <NewVar {...initProps}/>
+      <NewVar {...nameProps}/>
       <div>(</div>
-      {numArr.map((i) => <Param key={i} {...new Props(context,i,undefined,updateNthArgType(i))} />)}
+      {numArr.map((i) => <Param key={i} {...nthProp(i)} />)}
       <div className="flex flex-col">
         <a className={button} onClick={() => addArg()}>+</a>
         <a className={button} onClick={() => removeArg()}>-</a>

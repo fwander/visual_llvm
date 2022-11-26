@@ -33,7 +33,9 @@ export class UnaryExpr extends Expression{
     eval = () => {
         switch(this.op){
             case Operator.AND:
-                return `builder.CreateNot(${this.child?.eval()})`
+                return `builder.CreateNot(
+    ${this.child?.eval()}
+)`
         }
         return `` ;
     }
@@ -60,17 +62,29 @@ export class BinaryExpr extends Expression{
     eval = () => {
         switch(this.op){
             case Operator.AND:
-                return `builder.CreateAnd(${this.left?.eval()},${this.right?.eval()})`
+                return `builder.CreateAnd(
+    ${this.left?.eval()},${this.right?.eval()})
+`;
             case Operator.OR:
-                return `builder.CreateOr(${this.left?.eval()},${this.right?.eval()})`
+                return `builder.CreateOr(
+${this.left?.eval()},${this.right?.eval()})
+`;
             case Operator.PLUS:
-                return `builder.CreateAdd(${this.left?.eval()},${this.right?.eval()})`
+                return `builder.CreateAdd(
+${this.left?.eval()},${this.right?.eval()})
+`;
             case Operator.MINUS:
-                return `builder.CreateSub(${this.left?.eval()},${this.right?.eval()})`
+                return `builder.CreateSub(
+${this.left?.eval()},${this.right?.eval()})
+`;
             case Operator.TIMES:
-                return `builder.CreateMul(${this.left?.eval()},${this.right?.eval()})`
+                return `builder.CreateMul(
+${this.left?.eval()},${this.right?.eval()})
+`;
             case Operator.DIV:
-                return `builder.CreateSDiv(${this.left?.eval()},${this.right?.eval()})`
+                return `builder.CreateSDiv(
+${this.left?.eval()},${this.right?.eval()})
+`;
         }
         return "";
     }
@@ -85,9 +99,9 @@ export class ConstExpr extends Expression{
     eval = () => {
         switch(this.t){
             case BOOL:
-                return `builder.getInt1(${this.val ? 1 : 0})`
+                return `builder.getInt1( ${this.val ? 1 : 0})`;
             case INT:
-                return `builder.getInt32(${this.val})`
+                return `builder.getInt32(${this.val})`;
         }
         return `${this.val}` ;
     }
@@ -105,11 +119,9 @@ export class AssignExpr extends Expression{
     setid  = (e: string) => {this.ident  = e;}
     setExpr = (e: Expression) => {this.assignTo = e;}
     eval = () => {
-        return `
-let ${this.ident}_val = ${this.assignTo.eval()};
+        return `let ${this.ident}_val = ${this.assignTo.eval()};
 let ${this.ident}_ptr = builder.CreateAlloca(${(this.assignTo.getType() as Type).eval()},null,'${this.ident}');
-builder.CreateStore(${this.ident}_val,${this.ident}_ptr);
-        ` ;
+builder.CreateStore(${this.ident}_val,${this.ident}_ptr); ` ;
     }
     getType = () => {return this.assignTo.getType()}
 }
@@ -127,10 +139,8 @@ export class SetExpr extends Expression{
     setExpr = (e: Expression) => {this.assignTo = e;}
     eval = () => {
         this.assignExpr.upToDate = true;
-        return `
-${this.assignExpr.ident}_val = ${this.assignTo.eval()};
-builder.CreateStore(${this.assignExpr.ident}_val,${this.assignExpr.ident}_ptr);
-        ` ;
+        return `${this.assignExpr.ident}_val = ${this.assignTo.eval()};
+builder.CreateStore(${this.assignExpr.ident}_val,${this.assignExpr.ident}_ptr);` ;
     }
     getType = () => {return this.assignTo.getType()}
 }
@@ -164,7 +174,6 @@ export class ReturnExpr extends Expression {
         return `builder.CreateRet(${this.child?.eval()});` ;
     }
     getType = () => {return this.child? this.child.getType():"Err"}
-
 }
 
 export class DeRefExpr extends Expression {
@@ -201,15 +210,13 @@ export class FunctionExpr extends Expression {
     params: ParamExpr[] = [];
     setChild = (e: Expression) => {this.codeBlock = e as BlockExpr;}
     eval = () => {
-        return `
-let ${this.name}_ret_type = ${this.retType.eval()};
+        return `let ${this.name}_ret_type = ${this.retType.eval()};
 let ${this.name}_param_types = [${this.params.map((p)=>{return p.t?.val.concat(',')})}];
 let ${this.name}_type = llvm.FunctionType.get(${this.name}_ret_type,${this.name}_param_types,false);
 let ${this.name} = llvm.Function.Create(${this.name}_type, linkage, ${this.name}, module);
 ${this.codeBlock?.header()}
 ${this.codeBlock?.insert()}
-${this.codeBlock?.eval()}
-        ` ;
+${this.codeBlock?.eval()}` ;
     }
     getType = () => {return this.retType}
 }
@@ -232,7 +239,7 @@ export class BlockExpr extends Expression {
         return `builder.SetInsertPoint(${this.name});`
     }
     eval = () => {
-        return this.lines.map((e:Expression)=>{return e.eval();}).join('\n');
+        return this.lines.map((e:Expression)=>{return e.eval();}).join('');
     }
     getType = () => {return VOID}
 }
@@ -250,16 +257,14 @@ export class WhileExpr extends Expression {
     eval = () => {
         this.insideOf.slices++;
         const exit: BlockExpr = new BlockExpr(this.insideOf.name.concat('_',`${this.insideOf.slices}`),this.insideOf.func);
-        return `
-${this.block?.header()}
+        return `${this.block?.header()}
 ${exit.header()}
 ${this.block?.insert()}
 builder.CreateCondBr(${this.cond?.eval()},${this.block?.name},${exit.name})
 ${this.block?.eval()}
 builder.CreateBr(${this.block?.name});
 ${exit.insert()}
-${exit.eval()}
-        `;
+${exit.eval()}`;
     }
     getType = () => {return VOID}
 }
@@ -277,16 +282,14 @@ export class IfExpr extends Expression {
     eval = () => {
         this.insideOf.slices++;
         const exit: BlockExpr = new BlockExpr(this.insideOf.name.concat('_',`${this.insideOf.slices}`),this.insideOf.func);
-        return `
-${this.ifBlock?.header()}
+        return `${this.ifBlock?.header()}
 ${exit.header()}
 builder.CreateCondBr(${this.cond?.eval()},${this.ifBlock?.name},${exit.name})
 ${this.ifBlock?.insert()}
 ${this.ifBlock?.eval()}
 builder.CreateBr(${exit.name});
 ${exit.insert()}
-${exit.eval()}
-        `;
+${exit.eval()} `;
     }
     getType = () => {return VOID}
 }
@@ -306,8 +309,7 @@ export class IfElseExpr extends Expression {
     eval = () => {
         this.insideOf.slices++;
         const exit: BlockExpr = new BlockExpr(this.insideOf.name.concat('_',`${this.insideOf.slices}`),this.insideOf.func);
-        return `
-${this.ifBlock?.header()}
+        return `${this.ifBlock?.header()}
 ${this.elseBlock?.header()}
 ${exit.header()}
 builder.CreateCondBr(${this.cond?.eval()},${this.ifBlock?.name},${this.elseBlock?.name})
@@ -318,8 +320,7 @@ ${this.elseBlock?.insert()}
 ${this.elseBlock?.eval()}
 builder.CreateBr(${exit.name});
 ${exit.insert()}
-${exit.eval()}
-        `;
+${exit.eval()}`;
     }
     getType = () => {return VOID}
 }
@@ -327,13 +328,11 @@ export class GlobalExpr extends Expression {
     functions: FunctionExpr[] = [];
 
     eval = () => {
-        return `
-let context = new llvm.LLVMContext();
+        return `let context = new llvm.LLVMContext();
 let module = new llvm.Module("out",context);
 let builder = new llvm.IRBuilder(context);
 ${this.functions.map((f)=>f.eval()).join()}
-console.log(module.print());
-        `
+console.log(module.print()); `
     }
     getType = () => {return VOID}
 }
