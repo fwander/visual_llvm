@@ -14,8 +14,8 @@ import { ParsedUrlQuery } from "querystring";
 var input_field = "bg-gray-50 h-2 border border-gray-300 text-gray-900 text-sm rounded focus:ring-blue-500 focus:border-blue-500 p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500 my-auto";
 var button = "inline-flex items-center select-none px-1.5 py-0 bg-gray-50 mx-1 text-gray-500 rounded-md hover:bg-gray-200 hover:text-gray-600";
 var red_button = button + " bg-red-400 text-gray-50 hover:bg-red-500 hover:text-gray-100";
-var component_row = "flex flex-row space-x-1 bg-gray-900 bg-opacity-10 rounded-md p-2 align-middle justify-center my-auto";
-var component_col = "flex flex-col space-y-1 bg-gray-900 bg-opacity-10 rounded-md p-1";
+var component_row = "flex flex-row space-x-1 bg-gray-900 bg-opacity-20 rounded-md p-2 align-middle justify-center my-auto";
+var component_col = "flex flex-col space-y-1 bg-gray-900 bg-opacity-20 rounded-md p-1";
 var keyword = "font-bold bg-opacity-100 rounded-md px-1 py-0"
 var symbol = "m-auto"
 
@@ -41,7 +41,7 @@ export default function Home() {
     ret.id = JSON.stringify(n);
     return ret;
   }
-  return <div className="h-screen w-screen flex flex-row">
+  return <div className="h-screen w-screen flex flex-row decoration-white">
   <div className="h-screen bg-gray-50 flex flex-col">
     {numArr.map((i: number) => <FunctionDef {...nthProp(i)} />)}
     <div className="flex flex-row">
@@ -224,7 +224,7 @@ function ExprComponent(props: any){
 }
 
 function KeyWord(props: any){
-  let color = "bg-yellow-500"
+  let color = "bg-yellow-400"
   if (props.color){
     color = props.color
   }
