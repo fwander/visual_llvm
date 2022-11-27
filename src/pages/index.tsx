@@ -48,7 +48,6 @@ export default function Home() {
       <a className={button} onClick={() => setNumLines(numLines+1)}>add</a>
       <a className={button} onClick={() => setNumLines(Math.max(numLines-1, 0))}>remove</a>
     </div>
-    <button className={button} onClick={(e)=>{}}>save</button>
   </div>
     <div className="bg-gray-100">
       <button className={button} onClick={(e)=>{setOutput(expr.eval())}}>compile</button>
@@ -874,6 +873,7 @@ const FunctionDef: React.FC<Props> = (props) => {
 
   let initProps = new Props(context,0,updateName);
   initProps.typeSetter = updateType;
+  initProps.id = props.id + ".rettype.";
 
   returnType.name = name;
 
