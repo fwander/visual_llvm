@@ -259,7 +259,7 @@ const CodeBlock: React.FC<Props> = (props) => {
 
   function nthProp(n: number){
     let ret = new Props(context,n,undefined,(e)=>{setLine(n,e)},undefined,props.content.concat(n.toString()));
-    ret.id = props.id + ":" +JSON.stringify(n);
+    ret.id = props.id + "." +JSON.stringify(n);
     return ret;
   }
 
@@ -308,6 +308,7 @@ class SelectInput {
 
 const Select: React.FC<SelectInput> = (props) => {
   const [childIndex, setChild] = useQueryState(props.names[0]+props.id,-1,(p: string)=>{return parseInt(p)});
+  console.log(props.id, childIndex);
   function handleChange(name: string) {
     if (name === ".." && props.goBack){
       props.goBack();
@@ -343,6 +344,7 @@ const Select: React.FC<SelectInput> = (props) => {
 
 const SelectType: React.FC<Props> = (props) => {
   let si = new SelectInput( types.map((t) => t.toString()) , types.map((t) => <TTypeCom {...new Props(props.context,props.lineNumer,props.lvalSetter,props.rvalSetter,t,props.content,props.typeFilter,props.typeSetter)}/>),"Select Type");
+  si.id = props.id;
   return <Select {...si}/>
 }
 
@@ -360,7 +362,9 @@ const SelectExpressionType: React.FC<Props> = (context) => {
   }
   let context_reset = context.copy();
   context_reset.del = reset;
+  console.log('context_reset ', context_reset.id);
   let si = new SelectInput(["Constant", "Logic", "Arithmetic", "Variable"], [<Const {...context}/>, <SelectLogic {...context_reset}/>, <SelectArith {...context_reset}/>, <SelectVars {...context_reset}/>],"Select Expression",undefined,undefined,done,resetting);
+  si.id = context.id;
   let sel = <Select {...si}/>
   return sel
 }
@@ -393,6 +397,8 @@ const SelectLogic: React.FC<Props> = (context) => {
     <BinaryOp op={Operator.GE}  props={passing_cmp}/>,
     <UnaryOp  op={Operator.NOT} props={passing}/>,
   ], "Select Operation",undefined,context.del);
+  si.id = context.id;
+  console.log('operation: ', si.id)
 
   return <Select {...si}/>
 }
@@ -410,6 +416,7 @@ const SelectArith: React.FC<Props> = (context) => {
   let si = new SelectInput(ops,
     ops.map((op) => <BinaryOp op={op} props={passing}/>)
   , "Select Operation",undefined,context.del);
+  si.id = context.id;
   return <Select {...si}/>
 }
 
@@ -444,6 +451,7 @@ const SelectVars: React.FC<Props> = (props) => {
     currentContext = currentContext.parentContext;
   }
   let si = new SelectInput(var_names, components, "Select variable",undefined,props.del);
+  si.id = props.id;
   return <Select {...si}/>
 }
 
@@ -490,8 +498,10 @@ function BinaryOp(props: any){
   let rprops = props.props.copy();
   lprops.rvalSetter = (e: Expression)=>{expr.setLeft(e);setExpr(expr)};
   lprops.del = undefined;
+  lprops.id = props.props.id + ".0";
   rprops.rvalSetter = (e: Expression)=>{expr.setRight(e);setExpr(expr)};
   rprops.del = undefined;
+  rprops.id = props.props.id + ".1";
   return <ExprComponent props={props.props} rval={expr} row={true}> 
     <div className={symbol}>(</div>
     <SelectExpressionType {...lprops}/>
@@ -509,6 +519,7 @@ function UnaryOp(props: any){
   let cprops = props.props.copy();
   cprops.del = undefined;
   cprops.rvalSetter = (e: Expression) => {expr.setChild(e);setExpr(expr)};
+  cprops.id = props.props.id + ".0";
   return <ExprComponent props={props.props} rval={expr} row={true}>
     <div className={symbol}>{props.op}</div>
     <div className={symbol}>(</div>
@@ -521,6 +532,7 @@ const Return: React.FC<Props> = (props) => {
   let cprops = props.copy();
   cprops.del = undefined;
   cprops.rvalSetter = (e: Expression) => {expr.setChild(e);setExpr(expr)};
+  cprops.id = props.id + ".0";
   return <ExprComponent props={props} rval={expr} row={true} color="bg-amber-500">
     <KeyWord color="bg-amber-700 text-white">return</KeyWord>
     <div className={symbol}>(</div>
@@ -530,11 +542,13 @@ const Return: React.FC<Props> = (props) => {
 }
 
 const Assign: React.FC<Props> = (props) => {
-  const [name, setName] = useState('');
+  const [name, setName] = useQueryState('varname'+props.id,'',(s:string)=>{return s.slice(1,-1);});
   const [T, setType] = useState(new AssignExpr(props.lineNumer,'',new Expression(props.lineNumer)));
   props.context.set(name,T)
   let newProps = new Props(props.context,props.lineNumer,updateName,updateType,undefined,undefined,(t: Expression) => {return !(t instanceof FunctionExpr)});
   let exprProps = new Props(props.context,props.lineNumer,undefined,updateType,undefined,undefined);
+  newProps.id = props.id + ".0";
+  exprProps.id = props.id + ".1";
   if (name !== '')
     props.context.set(name,T);
   function updateName(newName: string){
@@ -549,6 +563,7 @@ const Assign: React.FC<Props> = (props) => {
     props.context.set(name,T)
   }
   newProps.del = undefined;
+  newProps.content = name;
   exprProps.del = undefined;
   
   return <ExprComponent props={props} rval={T} row={true}>
@@ -566,10 +581,11 @@ const FunctionCall: React.FC<Props> = (props) => {
   }
   let fn  = props.currentExpr as FunctionExpr;
   const [expr, setExpr] = useState(new FunctionCallExpr(props.lineNumer));
-  function getProps(type: Type){
+  function getProps(type: Type, n: number){
     let ret = props.copy()
     ret.del = undefined;
     ret.typeFilter = (e: Expression) => {return e.getType() == type}
+    ret.id = props.id + "." + JSON.stringify(n);
     return ret;
   }
   return <ExprComponent props={props} rval={expr} row={true}>
@@ -577,7 +593,7 @@ const FunctionCall: React.FC<Props> = (props) => {
     {fn.name}
     </KeyWord>
     <div className={symbol}> ( </div>
-    {fn.params.map((p)=>{return <SelectExpressionType {...getProps(p.t? p.t : new Type(""))}/>})}
+    {fn.params.map((p,i)=>{return <SelectExpressionType {...getProps(p.t? p.t : new Type(""),i)}/>})}
     <div className={symbol}> ) </div>
   </ExprComponent>
 }
@@ -604,6 +620,8 @@ const Set: React.FC<Props> = (props) => {
   
   let newProps = new Props(props.context,props.lineNumer,undefined,updateExpr,undefined,undefined,(t: Expression) => {return !(t instanceof FunctionExpr) && (t.getType() === type)});
   let varProps = new Props(props.context,props.lineNumer,updateName,undefined,undefined,undefined,(t: Expression) => {return !(t instanceof FunctionExpr) && !(t instanceof ParamExpr)});
+  newProps.id = props.id + ".0";
+  varProps.id = props.id + ".1";
   varProps.del = undefined;
   newProps.del = undefined;
 
@@ -617,7 +635,7 @@ const Set: React.FC<Props> = (props) => {
 }
 
 const Param: React.FC<Props> = (props) => {
-  const [name, setName] = useState('');
+  const [name, setName] = useQueryState('paramname'+props.id,'',(s:string)=>{return s.slice(1,-1);});
   let func = props.context.parentContext?.exprs[0];
   const [T, setType] = useState(new ParamExpr(0,name,new Type(""),props.lineNumer,func as FunctionExpr));
   if (name !== '')
@@ -641,12 +659,16 @@ const Param: React.FC<Props> = (props) => {
   }
   let newProps = new Props(props.context,props.lineNumer,updateName);
   newProps.typeSetter = updateType;
+  newProps.id = props.id + ".0";
+  newProps.content=name;
+  let typeProps = newProps.copy();
+  typeProps.id = props.id + ".1";
   return <ExprComponent props={props} rval={T} row={true}>
     <NewVar {...newProps}/>
     <div className={symbol}>
       : 
     </div>
-    <SelectType {...newProps}/>
+    <SelectType {...typeProps}/>
     </ExprComponent>
 }
 
@@ -664,12 +686,12 @@ const NewVar: React.FC<Props> = (props) => {
 
 const Const: React.FC<Props> = (props) => {
   const [ok,setOk] = useState(true);
-  const [val,setVal] = useState("");
-  check(val);
+  const [val, setVal] = useQueryState('const'+props.id,'',(s:string)=>{console.log(s);return s.slice(1,-1).replaceAll('\\"','"');});
   if (!props.rvalSetter){
     return <p>ERROR no r value setter for new value</p>
   }
   let setter = props.rvalSetter;
+  useEffect(()=>check(val));
   function handleChange(val: string){
     setVal(val);
     check(val);
@@ -699,6 +721,7 @@ const Const: React.FC<Props> = (props) => {
   return <input
         className={input_field + " w-32"}
         onChange={(e) => {handleChange(e.target.value)}}
+        defaultValue={val}
       />
   }
   else {
@@ -743,16 +766,16 @@ const IfElse: React.FC<Props> = (props) => {
   ifprops.rvalSetter = expr.setIf;
   ifprops.content = props.content.concat("_if_block");
   ifprops.color = "bg-indigo-500";
-  ifprops.id = props.id + ":" + "0";
+  ifprops.id = props.id + ".if." + "0";
   elseprops.rvalSetter = expr.setElse;
   elseprops.content = props.content.concat("_else_block");
   elseprops.color = "bg-rose-500";
-  elseprops.id = props.id + ":" + "1";
+  elseprops.id = props.id + ".if." + "1";
 
   let condprops = props.copy();
   condprops.typeFilter = (e: Expression) => {return e.getType() == BOOL};
   condprops.rvalSetter = expr.setCond;
-  condprops.id = props.id + ":" + "3"
+  condprops.id = props.id + ".if." + "3"
   return <ExprComponent props={props} rval={expr} row={false}>
     <div className="flex flex-row space-x-4">
       <KeyWord>
@@ -785,12 +808,12 @@ const If: React.FC<Props> = (props) => {
   ifprops.rvalSetter = expr.setIf;
   ifprops.content = props.content.concat("_if_block");
   ifprops.color = "bg-indigo-500";
-  ifprops.id = props.id + ":" + "0";
+  ifprops.id = props.id + "." + "0";
 
   let condprops = props.copy();
   condprops.typeFilter = (e: Expression) => {return e.getType() === BOOL};
   condprops.rvalSetter = expr.setCond;
-  condprops.id = props.id + ":" + "3"
+  condprops.id = props.id + "." + "3"
   return <ExprComponent props={props} rval={expr} row={false}>
     <div className="flex flex-row space-x-4">
       <KeyWord>
@@ -815,12 +838,12 @@ const While: React.FC<Props> = (props) => {
   let ifprops = new Props(ifcontext,0);
   ifprops.rvalSetter = expr.setIf;
   ifprops.content = props.content.concat("_while_block");
-  ifprops.id = props.id + ":" + "0";
+  ifprops.id = props.id + "." + "0";
 
   let condprops = props.copy();
   condprops.typeFilter = (e: Expression) => {return e.getType() == BOOL};
   condprops.rvalSetter = expr.setCond;
-  condprops.id = props.id + ":" + "3"
+  condprops.id = props.id + "." + "3"
   return <ExprComponent props={props} rval={expr} row={false}>
     <div className="flex flex-row space-x-4">
       <KeyWord>
@@ -842,7 +865,7 @@ const While: React.FC<Props> = (props) => {
 
 const FunctionDef: React.FC<Props> = (props) => {
   const [name, setName] = useQueryState('fnname'+props.id,'function_name',(s:string)=>{return s.slice(1,-1);});
-  const [numArgs, setNumArgs] = useState(0);
+  const [numArgs, setNumArgs] = useQueryState('numArgs'+props.id,0,(s: string)=>{return parseInt(s);});
   const [returnType, setType] = useState(new FunctionExpr(name, new Type("")));
   let context = new Context(returnType, props.context);
 
@@ -924,7 +947,7 @@ const FunctionDef: React.FC<Props> = (props) => {
 
   function nthProp(n: number){
     let ret = new Props(context,n,undefined,updateNthArgType(n));
-    ret.id = props.id + ":" +JSON.stringify(n);
+    ret.id = props.id + "." +JSON.stringify(n);
     return ret;
   }
 

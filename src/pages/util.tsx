@@ -24,7 +24,6 @@ export function useQueryState<T>(thisid: string ,initialState: T,deserialize: (s
   }
 
   let s = getState();
-  console.log("content: ",s,thisid);
   const [state, setState] = useState(s? s:initialState);
 
   useEffect(() => {
