@@ -21,15 +21,13 @@ var symbol = "m-auto"
 
 
 export default function Home() {
-  let context = new Context(new FunctionExpr("global",new Type("")));
+  const [context, setContext] = useState(new Context(new FunctionExpr("global",new Type(""))));
   let expr = new GlobalExpr(0);
   const [numLines, setNumLines] = useQueryState('numfns',1,(p: string)=>{return parseInt(p)});
   const [output, setOutput] = useState(expr.eval());
 
   const router = useRouter();
-  console.log(Object.keys(router.query).length);
 
-  // console.log(JSON.stringify({lines:4}));
 
   let numArr = [];
   for (let i = 0; i < numLines; i++){
@@ -37,7 +35,7 @@ export default function Home() {
     expr.functions.push(new FunctionExpr("",new Type("")));
   }
   function nthProp(n: number){
-    let ret = new Props(context,n,undefined,(e)=>{expr.functions[n] = e as FunctionExpr});
+    let ret = new Props(context,n,undefined,(e)=>{expr.functions[n] = e as FunctionExpr; setContext(context)});
     ret.id = JSON.stringify(n);
     return ret;
   }
@@ -307,7 +305,6 @@ class SelectInput {
 
 const Select: React.FC<SelectInput> = (props) => {
   const [childIndex, setChild] = useQueryState(props.names[0]+props.id,-1,(p: string)=>{return parseInt(p)});
-  console.log(props.id, childIndex);
   function handleChange(name: string) {
     if (name === ".." && props.goBack){
       props.goBack();
@@ -361,7 +358,6 @@ const SelectExpressionType: React.FC<Props> = (context) => {
   }
   let context_reset = context.copy();
   context_reset.del = reset;
-  console.log('context_reset ', context_reset.id);
   let si = new SelectInput(["Constant", "Logic", "Arithmetic", "Variable"], [<Const {...context}/>, <SelectLogic {...context_reset}/>, <SelectArith {...context_reset}/>, <SelectVars {...context_reset}/>],"Select Expression",undefined,undefined,done,resetting);
   si.id = context.id;
   let sel = <Select {...si}/>
@@ -397,7 +393,6 @@ const SelectLogic: React.FC<Props> = (context) => {
     <UnaryOp  op={Operator.NOT} props={passing}/>,
   ], "Select Operation",undefined,context.del);
   si.id = context.id;
-  console.log('operation: ', si.id)
 
   return <Select {...si}/>
 }
@@ -426,8 +421,10 @@ const SelectVars: React.FC<Props> = (props) => {
   let components = [];
   let currentContext: Context | undefined = props.context;
   let line = props.lineNumer;
+  console.log(props);
   while(currentContext !== undefined){
     let i = 0;
+    console.log(currentContext.names);
     for (var name of currentContext.names){
       if (line >= 0 && i >= line) break;
       if (props.current && currentContext.exprs[i]?.getType() as Type != props.current){
@@ -578,6 +575,7 @@ const FunctionCall: React.FC<Props> = (props) => {
   if ((props.currentExpr) && !(props.currentExpr instanceof FunctionExpr)){
     return <div>Error not a function</div>
   }
+  console.log(props.currentExpr)
   let fn  = props.currentExpr as FunctionExpr;
   const [expr, setExpr] = useState(new FunctionCallExpr(props.lineNumer));
   function getProps(type: Type, n: number){
@@ -685,7 +683,7 @@ const NewVar: React.FC<Props> = (props) => {
 
 const Const: React.FC<Props> = (props) => {
   const [ok,setOk] = useState(true);
-  const [val, setVal] = useQueryState('const'+props.id,'',(s:string)=>{console.log(s);return s.slice(1,-1).replaceAll('\\"','"');});
+  const [val, setVal] = useQueryState('const'+props.id,'',(s:string)=>{return s.slice(1,-1).replaceAll('\\"','"');});
   if (!props.rvalSetter){
     return <p>ERROR no r value setter for new value</p>
   }
